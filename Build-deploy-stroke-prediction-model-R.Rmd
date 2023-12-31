@@ -1,0 +1,171 @@
+---
+title: "Build and deploy a stroke prediction model using R"
+date: "`r Sys.Date()`"
+output: html_document
+author: "Misikir G Tesfaye"
+---
+
+# About Data Analysis Report
+
+This RMarkdown file contains the report of the data analysis done for the project on building and deploying a stroke prediction model in R. It contains analysis such as data exploration, summary statistics and building the prediction models. The final report was completed on `r date()`. 
+
+**Data Description:**
+
+According to the World Health Organization (WHO) stroke is the 2nd leading cause of death globally, responsible for approximately 11% of total deaths.
+
+This data set is used to predict whether a patient is likely to get stroke based on the input parameters like gender, age, various diseases, and smoking status. Each row in the data provides relevant information about the patient.
+
+
+# Task One: Import data and data preprocessing
+
+## Load data and install packages
+
+```{r}
+#Libraries to be used in the project
+library(readr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(caret)
+library(randomForest)
+
+data <- read_csv("healthcare-dataset-stroke-data.csv")  
+
+
+```
+
+
+## Describe and explore the data
+
+```{r}
+# Display the structure of the dataset
+str(data)
+
+# Summary statistics of numerical variables
+summary(data)
+
+# Check for missing values
+colSums(is.na(data))
+
+# Explore categorical variables
+table(data$smoking_status)  # Replace "Categorical_Variable" with the actual categorical column name
+
+# Visualize distributions or relationships
+# Example histogram for numerical variable
+ggplot(data, aes(x = avg_glucose_level)) + geom_histogram()
+
+# Example boxplot for comparing numerical variable across categories
+ggplot(data, aes(x = smoking_status, y = avg_glucose_level)) + geom_boxplot()
+
+# Correlation matrix for numerical variables
+cor(data[, sapply(data, is.numeric)])
+
+
+```
+
+
+
+# Task Two: Build prediction models
+
+```{r}
+# Drop ID column if it's not informative for prediction
+data <- data[, -which(names(data) == "id")]
+
+# Split data into training and testing sets (e.g., 70-30 split)
+set.seed(123)  # For reproducibility
+trainIndex <- createDataPartition(data$stroke, p = 0.7, list = FALSE)
+trainData <- data[trainIndex, ]
+testData <- data[-trainIndex, ]
+
+# Ensure 'stroke' is a factor variable in the dataset
+trainData$stroke <- as.factor(trainData$stroke)
+testData$stroke <- as.factor(testData$stroke)
+
+# Check for imbalance in the target variable
+table(trainData$stroke)
+
+# Build a random forest model for classification
+model_rf <- randomForest(stroke ~ ., data = trainData, ntree = 100)
+
+# Predict on test set
+predictions_rf <- predict(model_rf, newdata = testData)
+
+
+```
+
+
+
+
+# Task Three: Evaluate and select prediction models
+
+```{r}
+# Evaluate model performance
+confusionMatrix(predictions_rf, as.factor(testData$stroke))
+
+```
+
+
+
+# Task Four: Deploy the prediction model
+
+```{r}
+
+# Serialize the model
+# Save the model to a file (e.g., 'deployed_model.rds')
+saveRDS(model_rf, "deployed_model.rds")  
+
+# Integration with a hypothetical healthcare system:
+# Load the serialized model for prediction in the healthcare system
+deployed_model <- readRDS("deployed_model.rds")  # Load the serialized model
+
+# Function to predict stroke based on patient data
+predict_stroke <- function(patient_data) {
+    prediction <- predict(deployed_model, newdata = patient_data, type = "response")
+    return(prediction)
+}
+
+
+
+```
+
+
+
+
+# Task Five: Findings and Conclusions
+**Here is my analysis and Observations:**
+**The model shows high accuracy but fails to predict any instances of the positive class** **(Stroke).Sensitivity is very high, indicating that the model correctly predicts almost all** **instances of the negative class (No Stroke) but performs poorly on the positive class** **(Stroke).Specificity is zero, meaning the model fails to correctly identify any instances of** **the positive class.Positive Predictive Value (Precision) is high, reflecting that among the** **instances predicted as negative (No Stroke), most are indeed true negatives.**
+
+**Conclusion:**
+**While the model shows high accuracy, it fails to identify any instances of stroke (positive** **class), resulting in a lack of true positive predictions. The model's sensitivity and** **specificity metrics indicate a severe issue in detecting positive cases, which is critical** **for a stroke prediction model. Further investigation, model refinement, feature engineering,** **or data balancing techniques might be necessary to improve the model's performance on** **identifying strokes and achieve a more balanced and reliable prediction outcome.**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
